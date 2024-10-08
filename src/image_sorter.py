@@ -1,11 +1,13 @@
 import os
 import shutil
 from tkinter import filedialog, messagebox, Button, Toplevel, Label
+import tkinter as tk
 
 import numpy as np
 from PIL import Image, ImageTk, ImageDraw
 
 from .ui.components import create_ui, update_status
+
 
 
 class ImageSorter:
@@ -27,10 +29,12 @@ class ImageSorter:
         self.last_move = None
         self.move_history = []
         self.brush_history = []
+        self.redo_history = []
         self.max_history = 80  # Increase the limit to 80 steps
         self.is_painting = False
         self.image_position = [0, 0]  # Track image position
-
+        self.canvas = None
+        self.tk_image = None
         # Create UI elements
         create_ui(self)
 
@@ -49,6 +53,12 @@ class ImageSorter:
         self.brush_outline = None
         self.last_x = None
         self.last_y = None
+
+    def on_mouse_wheel(self, event):
+        if event.delta > 0:  # Scroll up
+            self.zoom_in()
+        else:  # Scroll down
+            self.zoom_out()
 
     def update_status(self):
         update_status(self)
@@ -75,7 +85,7 @@ class ImageSorter:
         if hasattr(self, 'original_image'):
             zoomed_size = (int(self.original_image.width * self.zoom_factor),
                            int(self.original_image.height * self.zoom_factor))
-            zoomed_image = self.original_image.resize(zoomed_size, Image.LANCZOS)
+            zoomed_image = self.original_image.resize(zoomed_size, Image.Resampling.LANCZOS)
             self.tk_image = ImageTk.PhotoImage(zoomed_image)
 
             self.canvas.delete("all")
@@ -190,6 +200,7 @@ class ImageSorter:
 
     def move_image(self, destination):
         # ... (existing move_image code) ...
+        image_path = self.images[self.current_index]
         self.move_history.append((image_path, self.current_folder, destination))
         # ... (rest of the existing move_image code) ...
 
@@ -301,12 +312,23 @@ class ImageSorter:
 
     def undo_brush(self):
         if self.brush_history:
-            self.original_image = self.brush_history.pop()
+            last_brush_state = self.brush_history.pop()
+            self.redo_history.append(last_brush_state)  # Save the state for redo
+            self.original_image = self.brush_history[-1] if self.brush_history else last_brush_state
             self.display_zoomed_image()
+
             if not self.brush_history:
                 messagebox.showinfo("Undo", "No more actions to undo.")
         else:
             messagebox.showinfo("Undo", "No actions to undo.")
+
+    def redo_brush(self):
+        if self.redo_history:
+            self.brush_history.append(self.redo_history.pop())  # Restore the last undone state
+            self.original_image = self.brush_history[-1]
+            self.display_zoomed_image()
+        else:
+            messagebox.showinfo("Redo", "No actions to redo.")
 
     def save_image(self):
         if hasattr(self, 'original_image') and self.images:
@@ -343,3 +365,7 @@ class ImageSorter:
             self.original_image = Image.fromarray(img_array)
             self.display_zoomed_image()
             self.show_temp_message("Color removal applied")
+
+    # Tooltip Class
+
+

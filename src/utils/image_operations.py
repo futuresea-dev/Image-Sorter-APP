@@ -30,7 +30,7 @@ def display_zoomed_image(self):
         new_height = int(self.original_image.height * self.zoom_factor)
 
         # Resize image
-        resized_image = self.original_image.resize((new_width, new_height), Image.LANCZOS)
+        resized_image = self.original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         # Convert to PhotoImage
         self.tk_image = ImageTk.PhotoImage(resized_image)
